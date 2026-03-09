@@ -31,6 +31,38 @@
   import { enableReaderWakeLock$, enableTapEdgeToFlip$ } from '$lib/data/store';
   import { onDestroy } from 'svelte';
 
+  import { onMount } from 'svelte';
+
+  let selectedText = '';
+  let popupX = 0;
+  let popupY = 0;
+  let isPopupVisible = false;
+
+  function handleSelectionChange() {
+    const selection = window.getSelection();
+    
+    // If nothing is selected or selection is just a cursor (collapsed)
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      isPopupVisible = false;
+      return;
+    }
+
+    const text = selection.toString().trim();
+    if (text.length > 0 && text.length < 50) { // Limit length to avoid full-page selection pops
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      selectedText = text;
+      // Center horizontally above the selection
+      popupX = rect.left + rect.width / 2;
+      // Position slightly above the top of the selection
+      popupY = rect.top + window.scrollY; 
+      isPopupVisible = true;
+    } else {
+      isPopupVisible = false;
+    }
+  }
+
   export let htmlContent: string;
 
   export let width: number;
@@ -365,6 +397,31 @@
     />
   {/if}
 </div>
+
+{#if isPopupVisible}
+  <div 
+    class="fixed z-[9999] pointer-events-none"
+    style:left="{popupX}px"
+    style:top="{popupY}px"
+  >
+    <div 
+      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 rounded-lg shadow-xl border bg-white text-black min-w-[120px] pointer-events-auto"
+      style:writing-mode="horizontal-tb"
+    >
+      <div class="text-xs opacity-50 mb-1">Lookup:</div>
+      <div class="text-lg font-bold">{selectedText}</div>
+      
+      <div class="mt-2 pt-2 border-t text-sm italic text-gray-600">
+        Dictionary loading...
+      </div>
+
+      <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+    </div>
+  </div>
+{/if}
 {$blurListener$ ?? ''}
 {$reactiveElements$ ?? ''}
-<svelte:document bind:visibilityState />
+<svelte:document 
+  bind:visibilityState 
+  on:selectionchange={handleSelectionChange} 
+/>
