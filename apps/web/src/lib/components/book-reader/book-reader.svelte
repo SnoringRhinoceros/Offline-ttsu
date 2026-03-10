@@ -37,32 +37,61 @@
   let popupX = 0;
   let popupY = 0;
   let isPopupVisible = false;
+  let side: 'left' | 'right' = 'right';
 
-  function handleSelectionChange() {
-    const selection = window.getSelection();
-    
-    // If nothing is selected or selection is just a cursor (collapsed)
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-      isPopupVisible = false;
-      return;
-    }
+function handleSelectionChange() {
+  const selection = window.getSelection();
 
-    const text = selection.toString().trim();
-    if (text.length > 0 && text.length < 50) { // Limit length to avoid full-page selection pops
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-
-      selectedText = text;
-      // Center horizontally above the selection
-      popupX = rect.left + rect.width / 2;
-      // Position slightly above the top of the selection
-      popupY = rect.top + window.scrollY; 
-      isPopupVisible = true;
-    } else {
-      isPopupVisible = false;
-    }
+  if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+    isPopupVisible = false;
+    return;
   }
 
+  const text = selection.toString().trim();
+  if (text.length === 0 || text.length > 50) {
+    isPopupVisible = false;
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  selectedText = text;
+
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  // Decide which side popup should appear
+  side = centerX > viewportWidth / 2 ? 'left' : 'right';
+
+  const horizontalOffset = 14;
+
+  if (side === 'right') {
+    popupX = rect.right + horizontalOffset;
+  } else {
+    popupX = rect.left - horizontalOffset;
+  }
+
+  // Default vertical position
+  popupY = centerY;
+
+  const popupHeight = 260;
+
+  // Prevent bottom clipping
+  if (popupY + popupHeight > viewportHeight - 16) {
+    popupY = viewportHeight - popupHeight - 16;
+  }
+
+  // Prevent top clipping
+  if (popupY < 16) {
+    popupY = 16;
+  }
+
+  isPopupVisible = true;
+}
   export let htmlContent: string;
 
   export let width: number;
@@ -400,25 +429,60 @@
 
 {#if isPopupVisible}
   <div 
-    class="fixed z-[9999] pointer-events-none"
+    class="fixed z-[9999] pointer-events-none transition-all duration-150"
     style:left="{popupX}px"
     style:top="{popupY}px"
   >
     <div 
-      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 rounded-lg shadow-xl border bg-white text-black min-w-[120px] pointer-events-auto"
+      class="absolute p-4 rounded-xl shadow-2xl border bg-white text-black w-[280px] sm:w-[350px] pointer-events-auto"
+      class:anchor-left={side === 'left'}
+      class:anchor-right={side === 'right'}
       style:writing-mode="horizontal-tb"
+      style:max-height="80vh"
+      style:overflow-y="auto"
     >
-      <div class="text-xs opacity-50 mb-1">Lookup:</div>
-      <div class="text-lg font-bold">{selectedText}</div>
-      
-      <div class="mt-2 pt-2 border-t text-sm italic text-gray-600">
-        Dictionary loading...
+      <div class="flex justify-between items-start mb-2">
+        <span class="text-[10px] font-bold uppercase tracking-wider opacity-40">Dictionary Lookup</span>
+        <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button>
       </div>
 
-      <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"></div>
+      <div class="text-2xl font-bold mb-2">{selectedText}</div>
+      
+      <div class="space-y-3 pt-3 border-t border-gray-100">
+        <div class="animate-pulse flex space-x-4">
+          <div class="flex-1 space-y-2 py-1">
+            <div class="h-2 bg-gray-200 rounded w-3/4"></div>
+            <div class="h-2 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 {/if}
+
+<style>
+  /* If the popup is to the left of the word, it must translate itself 100% left */
+  .anchor-left {
+    right: 0;
+    transform: translateX(0); /* Anchored to the right of this container */
+    margin-right: 0;
+    left: auto;
+    /* transform: translateX(-100%); */
+  }
+
+  /* If the popup is to the right of the word, it stays at 0 */
+  .anchor-right {
+    left: 0;
+    transform: translateX(0);
+  }
+
+  /* Prevent the popup from flying off the bottom of the screen */
+  div.absolute {
+    /* If the word is at the bottom, this ensures the popup expands upwards */
+    bottom: auto; 
+    top: 0;
+  }
+</style>
 {$blurListener$ ?? ''}
 {$reactiveElements$ ?? ''}
 <svelte:document 
