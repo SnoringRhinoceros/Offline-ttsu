@@ -33,11 +33,73 @@
 
   import { onMount } from 'svelte';
 
+onMount(() => {
+  const tapListener = (e: PointerEvent) => handleTap(e);
+
+  document.addEventListener("pointerup", tapListener);
+
+  return () => {
+    document.removeEventListener("pointerup", tapListener);
+  };
+});
+
   let selectedText = '';
   let popupX = 0;
   let popupY = 0;
   let isPopupVisible = false;
   let side: 'left' | 'right' = 'right';
+
+function getWordRangeFromPoint(x: number, y: number): Range | null {
+  let range: Range | null = null;
+
+  if (document.caretRangeFromPoint) {
+    range = document.caretRangeFromPoint(x, y);
+  } else if ((document as any).caretPositionFromPoint) {
+    const pos = (document as any).caretPositionFromPoint(x, y);
+    if (pos) {
+      range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse();
+    }
+  }
+
+  if (!range) return null;
+
+  const node = range.startContainer;
+
+  if (node.nodeType !== Node.TEXT_NODE) return null;
+
+  const text = node.textContent ?? "";
+  let start = range.startOffset;
+  let end = range.startOffset;
+
+  while (start > 0 && /\p{Letter}|\p{Number}/u.test(text[start - 1])) start--;
+  while (end < text.length && /\p{Letter}|\p{Number}/u.test(text[end])) end++;
+
+  if (start === end) return null;
+
+  const wordRange = document.createRange();
+  wordRange.setStart(node, start);
+  wordRange.setEnd(node, end);
+
+  return wordRange;
+}
+
+function handleTap(event: PointerEvent) {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+
+  const range = getWordRangeFromPoint(event.clientX, event.clientY);
+
+  if (!range) return;
+
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  handleSelectionChange();
+}
 
 function handleSelectionChange() {
   const selection = window.getSelection();
