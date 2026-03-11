@@ -88,71 +88,74 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
 function handleTap(event: PointerEvent) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
 
-  const range = getWordRangeFromPoint(event.clientX, event.clientY);
+  const { clientX, clientY } = event;
 
-  if (!range) return;
+  // Let mobile browser finish its tap handling
+  requestAnimationFrame(() => {
+    const range = getWordRangeFromPoint(clientX, clientY);
+    if (!range) return;
 
-  const selection = window.getSelection();
-  if (!selection) return;
+    const selection = window.getSelection();
+    if (!selection) return;
 
-  selection.removeAllRanges();
-  selection.addRange(range);
+    selection.removeAllRanges();
+    selection.addRange(range);
 
-  handleSelectionChange();
+    handleSelectionChange();
+  });
 }
+let selectionTimeout: number;
 
 function handleSelectionChange() {
-  const selection = window.getSelection();
+  clearTimeout(selectionTimeout);
 
-  if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-    isPopupVisible = false;
-    return;
-  }
+  selectionTimeout = window.setTimeout(() => {
+    const selection = window.getSelection();
 
-  const text = selection.toString().trim();
-  if (text.length === 0 || text.length > 50) {
-    isPopupVisible = false;
-    return;
-  }
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      isPopupVisible = false;
+      return;
+    }
 
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
+    const text = selection.toString().trim();
+    if (text.length === 0 || text.length > 50) {
+      isPopupVisible = false;
+      return;
+    }
 
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
+    const range = selection.getRangeAt(0);
+    const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+    
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-  selectedText = text;
+    selectedText = text;
 
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
 
-  // Decide which side popup should appear
-  side = centerX > viewportWidth / 2 ? 'left' : 'right';
+    side = centerX > viewportWidth / 2 ? 'left' : 'right';
 
-  const horizontalOffset = 14;
+    const horizontalOffset = 14;
 
-  if (side === 'right') {
-    popupX = rect.right + horizontalOffset;
-  } else {
-    popupX = rect.left - horizontalOffset;
-  }
+    popupX = side === 'right'
+      ? rect.right + horizontalOffset
+      : rect.left - horizontalOffset;
 
-  // Default vertical position
-  popupY = centerY;
+    popupY = centerY;
 
-  const popupHeight = 260;
+    const popupHeight = 260;
 
-  // Prevent bottom clipping
-  if (popupY + popupHeight > viewportHeight - 16) {
-    popupY = viewportHeight - popupHeight - 16;
-  }
+    if (popupY + popupHeight > viewportHeight - 16) {
+      popupY = viewportHeight - popupHeight - 16;
+    }
 
-  // Prevent top clipping
-  if (popupY < 16) {
-    popupY = 16;
-  }
+    if (popupY < 16) {
+      popupY = 16;
+    }
 
-  isPopupVisible = true;
+    isPopupVisible = true;
+  }, 10);
 }
   export let htmlContent: string;
 
