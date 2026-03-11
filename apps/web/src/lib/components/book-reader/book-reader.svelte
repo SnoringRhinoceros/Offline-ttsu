@@ -85,12 +85,13 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
   return wordRange;
 }
 
+let programmaticSelection = false;
+
 function handleTap(event: PointerEvent) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
 
   const { clientX, clientY } = event;
 
-  // Let mobile browser finish its tap handling
   requestAnimationFrame(() => {
     const range = getWordRangeFromPoint(clientX, clientY);
     if (!range) return;
@@ -98,15 +99,23 @@ function handleTap(event: PointerEvent) {
     const selection = window.getSelection();
     if (!selection) return;
 
+    programmaticSelection = true;
+
     selection.removeAllRanges();
     selection.addRange(range);
 
     handleSelectionChange();
+
+    requestAnimationFrame(() => {
+      programmaticSelection = false;
+    });
   });
 }
+
 let selectionTimeout: number;
 
 function handleSelectionChange() {
+    if (programmaticSelection) return;
   clearTimeout(selectionTimeout);
 
   selectionTimeout = window.setTimeout(() => {
