@@ -91,27 +91,25 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
 function handleTap(event: PointerEvent) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
 
-  const selection = window.getSelection();
-  if (!selection) return;
-
   const { clientX, clientY } = event;
 
-  // If something is already selected, clear it first
-  if (!selection.isCollapsed) {
+  const selection = window.getSelection();
+
+  if (selection && !selection.isCollapsed) {
     selection.removeAllRanges();
-
-    // wait a frame so the browser finishes clearing
-    requestAnimationFrame(() => selectWord(clientX, clientY));
-
-    return;
   }
 
-  selectWord(clientX, clientY);
+  requestAnimationFrame(() => {
+    selectWord(clientX, clientY);
+  });
 }
 
 function selectWord(x: number, y: number) {
   const range = getWordRangeFromPoint(x, y);
-  if (!range) return;
+  if (!range) {
+    isPopupVisible = false;
+    return;
+  }
 
   const selection = window.getSelection();
   if (!selection) return;
@@ -119,60 +117,44 @@ function selectWord(x: number, y: number) {
   selection.removeAllRanges();
   selection.addRange(range);
 
-  handleSelectionChange();
-}
-let selectionTimeout: number;
+  const text = range.toString().trim();
 
-function handleSelectionChange() {
-  clearTimeout(selectionTimeout);
+  if (!text || text.length > 50) {
+    isPopupVisible = false;
+    return;
+  }
 
-  selectionTimeout = window.setTimeout(() => {
-    const selection = window.getSelection();
+  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
 
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-      isPopupVisible = false;
-      return;
-    }
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
 
-    const text = selection.toString().trim();
-    if (text.length === 0 || text.length > 50) {
-      isPopupVisible = false;
-      return;
-    }
+  selectedText = text;
 
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
 
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+  side = centerX > viewportWidth / 2 ? 'left' : 'right';
 
-    selectedText = text;
+  const horizontalOffset = 14;
 
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+  popupX = side === 'right'
+    ? rect.right + horizontalOffset
+    : rect.left - horizontalOffset;
 
-    side = centerX > viewportWidth / 2 ? 'left' : 'right';
+  popupY = centerY;
 
-    const horizontalOffset = 14;
+  const popupHeight = 260;
 
-    popupX = side === 'right'
-      ? rect.right + horizontalOffset
-      : rect.left - horizontalOffset;
+  if (popupY + popupHeight > viewportHeight - 16) {
+    popupY = viewportHeight - popupHeight - 16;
+  }
 
-    popupY = centerY;
+  if (popupY < 16) {
+    popupY = 16;
+  }
 
-    const popupHeight = 260;
-
-    if (popupY + popupHeight > viewportHeight - 16) {
-      popupY = viewportHeight - popupHeight - 16;
-    }
-
-    if (popupY < 16) {
-      popupY = 16;
-    }
-
-    isPopupVisible = true;
-  }, 10);
+  isPopupVisible = true;
 }
   export let htmlContent: string;
 
@@ -567,7 +549,3 @@ function handleSelectionChange() {
 </style>
 {$blurListener$ ?? ''}
 {$reactiveElements$ ?? ''}
-<svelte:document 
-  bind:visibilityState 
-  on:selectionchange={handleSelectionChange} 
-/>
