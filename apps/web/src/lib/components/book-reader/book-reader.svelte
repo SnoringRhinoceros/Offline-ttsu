@@ -34,17 +34,16 @@
   import { onMount } from 'svelte';
 
 onMount(() => {
-  const tapListener = (e: PointerEvent) => handleTap(e);
+  const sub = containerEl$.subscribe(el => {
+    if (!el) return;
 
-containerEl$.subscribe(el => {
-  if (!el) return;
+    const tapListener = (e: PointerEvent) => handleTap(e);
+    el.addEventListener("pointerup", tapListener);
 
-  const tapListener = (e: PointerEvent) => handleTap(e);
+    return () => el.removeEventListener("pointerup", tapListener);
+  });
 
-  el.addEventListener("pointerup", tapListener);
-
-  return () => el.removeEventListener("pointerup", tapListener);
-});
+  return () => sub.unsubscribe();
 });
 
   let selectedText = '';
@@ -92,21 +91,35 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
 function handleTap(event: PointerEvent) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
 
+  const selection = window.getSelection();
+  if (!selection) return;
+
   const { clientX, clientY } = event;
 
-  // Let mobile browser finish its tap handling
-  requestAnimationFrame(() => {
-    const range = getWordRangeFromPoint(clientX, clientY);
-    if (!range) return;
-
-    const selection = window.getSelection();
-    if (!selection) return;
-
+  // If something is already selected, clear it first
+  if (!selection.isCollapsed) {
     selection.removeAllRanges();
-    selection.addRange(range);
 
-    handleSelectionChange();
-  });
+    // wait a frame so the browser finishes clearing
+    requestAnimationFrame(() => selectWord(clientX, clientY));
+
+    return;
+  }
+
+  selectWord(clientX, clientY);
+}
+
+function selectWord(x: number, y: number) {
+  const range = getWordRangeFromPoint(x, y);
+  if (!range) return;
+
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  handleSelectionChange();
 }
 let selectionTimeout: number;
 
