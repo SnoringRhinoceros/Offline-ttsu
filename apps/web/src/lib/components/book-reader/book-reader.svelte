@@ -88,20 +88,74 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
   return wordRange;
 }
 
+function getWordAtPoint(el: HTMLElement, x: number, y: number): string | null {
+  const range = document.caretRangeFromPoint
+    ? document.caretRangeFromPoint(x, y)
+    : (document as any).caretPositionFromPoint
+    ? (() => {
+        const pos = (document as any).caretPositionFromPoint(x, y);
+        if (!pos) return null;
+        const r = document.createRange();
+        r.setStart(pos.offsetNode, pos.offset);
+        r.collapse();
+        return r;
+      })()
+    : null;
+
+  if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
+
+  const text = range.startContainer.textContent ?? "";
+  let start = range.startOffset;
+  let end = range.startOffset;
+
+  while (start > 0 && /\p{Letter}|\p{Number}/u.test(text[start - 1])) start--;
+  while (end < text.length && /\p{Letter}|\p{Number}/u.test(text[end])) end++;
+
+  return text.slice(start, end) || null;
+}
+
 function handleTap(event: PointerEvent) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
 
   const { clientX, clientY } = event;
 
-  const selection = window.getSelection();
-  if (selection) selection.removeAllRanges();
+  const text = getWordAtPoint(event.target as HTMLElement, clientX, clientY);
 
-  // Wait TWO frames so mobile browsers finish tap processing
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      selectWord(clientX, clientY);
-    });
-  });
+  if (!text) {
+    isPopupVisible = false;
+    return;
+  }
+
+  selectedText = text;
+
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  side = centerX > viewportWidth / 2 ? 'left' : 'right';
+
+  const horizontalOffset = 14;
+
+  popupX = side === 'right'
+    ? rect.right + horizontalOffset
+    : rect.left - horizontalOffset;
+
+  popupY = centerY;
+
+  const popupHeight = 260;
+
+  if (popupY + popupHeight > viewportHeight - 16) {
+    popupY = viewportHeight - popupHeight - 16;
+  }
+
+  if (popupY < 16) {
+    popupY = 16;
+  }
+
+  isPopupVisible = true;
 }
 
 function selectWord(x: number, y: number) {
