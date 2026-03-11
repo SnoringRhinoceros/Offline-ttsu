@@ -94,13 +94,13 @@ function handleTap(event: PointerEvent) {
   const { clientX, clientY } = event;
 
   const selection = window.getSelection();
+  if (selection) selection.removeAllRanges();
 
-  if (selection && !selection.isCollapsed) {
-    selection.removeAllRanges();
-  }
-
+  // Wait TWO frames so mobile browsers finish tap processing
   requestAnimationFrame(() => {
-    selectWord(clientX, clientY);
+    requestAnimationFrame(() => {
+      selectWord(clientX, clientY);
+    });
   });
 }
 
