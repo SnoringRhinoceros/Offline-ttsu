@@ -88,7 +88,7 @@ function getWordRangeFromPoint(x: number, y: number): Range | null {
   return wordRange;
 }
 
-function getWordAtPoint(el: HTMLElement, x: number, y: number): string | null {
+function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect } | null {
   const range = document.caretRangeFromPoint
     ? document.caretRangeFromPoint(x, y)
     : (document as any).caretPositionFromPoint
@@ -111,7 +111,20 @@ function getWordAtPoint(el: HTMLElement, x: number, y: number): string | null {
   while (start > 0 && /\p{Letter}|\p{Number}/u.test(text[start - 1])) start--;
   while (end < text.length && /\p{Letter}|\p{Number}/u.test(text[end])) end++;
 
-  return text.slice(start, end) || null;
+  if (start === end) return null;
+
+  const wordRange = document.createRange();
+  wordRange.setStart(range.startContainer, start);
+  wordRange.setEnd(range.startContainer, end);
+
+  const rect =
+    wordRange.getClientRects()[0] ??
+    wordRange.getBoundingClientRect();
+
+  return {
+    text: text.slice(start, end),
+    rect
+  };
 }
 
 function handleTap(event: PointerEvent) {
@@ -119,31 +132,33 @@ function handleTap(event: PointerEvent) {
 
   const { clientX, clientY } = event;
 
-  const text = getWordAtPoint(event.target as HTMLElement, clientX, clientY);
+  const result = getWordAtPoint(clientX, clientY);
 
-  if (!text) {
+  if (!result) {
     isPopupVisible = false;
     return;
   }
 
+  const { text, rect } = result;
+
   selectedText = text;
 
-  const rect = (event.target as HTMLElement).getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
 
-  side = centerX > viewportWidth / 2 ? 'left' : 'right';
+  side = centerX > viewportWidth / 2 ? "left" : "right";
 
   const horizontalOffset = 14;
 
-  popupX = side === 'right'
-    ? rect.right + horizontalOffset
-    : rect.left - horizontalOffset;
+  popupX =
+    side === "right"
+      ? rect.right + horizontalOffset
+      : rect.left - horizontalOffset;
 
-  popupY = centerY;
+  popupY = rect.top;
 
   const popupHeight = 260;
 
