@@ -56,6 +56,38 @@
   import Fa from 'svelte-fa';
   import { onDestroy } from 'svelte';
 
+  import { installDictionary, isDictionaryInstalled } from '$lib/dictionary/install';
+
+  let dictionaryInstalled = false;
+let dictionaryInstalling = false;
+
+async function installDictionaryHandler() {
+  dictionaryInstalling = true;
+
+  try {
+    await installDictionary();
+    dictionaryInstalled = true;
+  } catch (e) {
+    dialogManager.dialogs$.next([
+      {
+        component: MessageDialog,
+        props: {
+          title: 'Dictionary Install Error',
+          message: `Failed to install dictionary: ${(e as Error).message}`
+        }
+      }
+    ]);
+  }
+
+  dictionaryInstalling = false;
+}
+
+if (browser) {
+  isDictionaryInstalled().then((installed) => {
+    dictionaryInstalled = installed;
+  });
+}
+
   export let selectedTheme: string;
 
   export let viewMode: ViewMode;
@@ -925,6 +957,39 @@
         {/if}
       </div>
     </SettingsItemGroup>
+
+    <SettingsItemGroup
+  title="Japanese Dictionary"
+  tooltip="Install the offline JMDict dictionary used for word lookups"
+>
+  <div class="flex items-center">
+
+    {#if dictionaryInstalled}
+
+      <div class="text-green-600 font-semibold">
+        Installed ✓
+      </div>
+
+    {:else}
+
+      <button
+        class="px-3 py-1 rounded-md border border-gray-400 hover:bg-gray-100 flex items-center"
+        on:click={installDictionaryHandler}
+        disabled={dictionaryInstalling}
+      >
+        {#if dictionaryInstalling}
+          <Fa icon={faSpinner} spin class="mr-2"/>
+          Installing...
+        {:else}
+          Install Dictionary
+        {/if}
+      </button>
+
+    {/if}
+
+  </div>
+</SettingsItemGroup>
+
     <SettingsItemGroup title="Epub Import Fixes" tooltip={importHTMLFixModeTooltip}>
       <ButtonToggleGroup
         options={optionsForImportHTMLFixes}

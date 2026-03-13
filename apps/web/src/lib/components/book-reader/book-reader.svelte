@@ -32,6 +32,10 @@
   import { onDestroy } from 'svelte';
 
   import { onMount } from 'svelte';
+  import { lookupWord } from '$lib/dictionary/lookup';
+
+  let dictionaryResults: any[] = [];
+let dictionaryLoading = false;
 
 onMount(() => {
   const sub = containerEl$.subscribe(el => {
@@ -142,6 +146,14 @@ function handleTap(event: PointerEvent) {
   const { text, rect } = result;
 
   selectedText = text;
+
+  dictionaryLoading = true;
+  dictionaryResults = [];
+
+  lookupWord(text).then(results => {
+    dictionaryResults = results;
+    dictionaryLoading = false;
+  });
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -582,13 +594,44 @@ function selectWord(x: number, y: number) {
       <div class="text-2xl font-bold mb-2">{selectedText}</div>
       
       <div class="space-y-3 pt-3 border-t border-gray-100">
-        <div class="animate-pulse flex space-x-4">
-          <div class="flex-1 space-y-2 py-1">
+
+        {#if dictionaryLoading}
+          <div class="animate-pulse space-y-2">
             <div class="h-2 bg-gray-200 rounded w-3/4"></div>
             <div class="h-2 bg-gray-200 rounded"></div>
           </div>
+
+        {:else if dictionaryResults.length === 0}
+
+          <div class="text-sm opacity-60">No dictionary results</div>
+
+        {:else}
+
+          {#each dictionaryResults as entry}
+
+            <div class="space-y-1">
+
+              <div class="font-semibold">
+                {entry.kanji?.[0] ?? entry.kana?.[0]}
+              </div>
+
+              <div class="text-sm opacity-70">
+                {entry.kana?.join(" ・ ")}
+              </div>
+
+              <ul class="text-sm list-disc ml-4">
+                {#each entry.gloss as g}
+                  <li>{g}</li>
+                {/each}
+              </ul>
+
+            </div>
+
+          {/each}
+
+        {/if}
+
         </div>
-      </div>
     </div>
   </div>
 {/if}
