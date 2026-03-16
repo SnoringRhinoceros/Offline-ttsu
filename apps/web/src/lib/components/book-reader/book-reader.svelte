@@ -33,6 +33,7 @@
 
   import { onMount } from 'svelte';
   import { lookupWord } from '$lib/dictionary/lookup';
+  import { renderStructuredContent } from '$lib/dictionary/dictionary-renderer';
 
   let dictionaryResults: any[] = [];
 let dictionaryLoading = false;
@@ -607,21 +608,43 @@ function selectWord(x: number, y: number) {
 
         {:else}
 
-          {#each dictionaryResults as entry}
-
-            <div class="space-y-1">
+          {#each dictionaryResults as entry, i}
+            <div class="space-y-1 pb-2 {i !== dictionaryResults.length - 1 ? 'border-b border-gray-100' : ''}">
 
               <div class="font-semibold">
-                {entry.kanji?.[0] ?? entry.kana?.[0]}
+                {entry.kanji?.length ? entry.kanji.join(" ・ ") : entry.kana?.join(" ・ ")}
               </div>
 
               <div class="text-sm opacity-70">
-                {entry.kana?.join(" ・ ")}
+                {#if entry.kana?.length}
+                  <div class="text-sm opacity-70">
+                    {entry.kana.join(" ・ ")}
+                  </div>
+                {/if}
               </div>
 
-              <ul class="text-sm list-disc ml-4">
+              {#if entry.tags?.length}
+                <div class="flex flex-wrap gap-1 text-[10px]">
+                  {#each entry.tags as tag}
+                    <span class="px-1 py-[1px] bg-gray-200 rounded">{tag}</span>
+                  {/each}
+                </div>
+              {/if}
+
+              <ul class="text-sm list-disc ml-4 space-y-0.5">
                 {#each entry.gloss as g}
-                  <li>{g}</li>
+
+                  {#if typeof g === "string"}
+                    <div class="text-sm">{g}</div>
+
+                  {:else if g.type === "structured-content"}
+
+                    <div class="text-sm structured-dict">
+                      {@html renderStructuredContent(g.content)}
+                    </div>
+
+                  {/if}
+
                 {/each}
               </ul>
 

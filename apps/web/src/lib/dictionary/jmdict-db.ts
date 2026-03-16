@@ -1,11 +1,15 @@
 import { openDB } from "idb";
 
 export interface JMDictEntry {
-  id: number;
+  id: string;
   kanji: string[];
   kana: string[];
+
+  tags?: string[];
+  rules?: string[];
+  score?: number;
+
   gloss: string[];
-  pos?: string[];
 }
 
 const DB_NAME = "reader-dictionary";
@@ -25,9 +29,10 @@ export const dbPromise = openDB(DB_NAME, 1, {
 export async function importJMDict(entries: JMDictEntry[]) {
   const db = await dbPromise;
   const tx = db.transaction(STORE, "readwrite");
+  const store = tx.store;
 
   for (const entry of entries) {
-    await tx.store.put(entry);
+    store.put(entry); // no await (much faster)
   }
 
   await tx.done;
