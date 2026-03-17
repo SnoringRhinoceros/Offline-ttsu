@@ -1,28 +1,17 @@
 import { importJMDict } from "./jmdict-db";
 import { dbPromise } from "./jmdict-db";
 
-function extractGlossary(definitionBlocks: any[]): string[] {
-  const results: string[] = [];
+export function loadDictionaryStyles(path: string) {
+  const id = `dict-style-${path.replace(/[^\w]/g, "")}`;
 
-  function walk(node: any) {
-    if (!node) return;
+  if (document.getElementById(id)) return;
 
-    if (node.tag === "li" && typeof node.content === "string") {
-      results.push(node.content);
-    }
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = path;
 
-    if (Array.isArray(node.content)) {
-      node.content.forEach(walk);
-    } else if (typeof node.content === "object") {
-      walk(node.content);
-    }
-  }
-
-  for (const block of definitionBlocks) {
-    walk(block.content);
-  }
-
-  return results;
+  document.head.appendChild(link);
 }
 
 export async function isDictionaryInstalled() {
@@ -34,8 +23,11 @@ export async function isDictionaryInstalled() {
 export async function installDictionary() {
   console.log("installing dictionary");
 
-  for (let i = 1; i <= 213; i++) {
+  loadDictionaryStyles("/dictionaries/jmdict/styles.css");
 
+  const allEntries: any[] = [];
+
+  for (let i = 1; i <= 213; i++) {
     const file = `/dictionaries/jmdict/term_bank_${i}.json`;
 
     const res = await fetch(file);
@@ -60,8 +52,11 @@ export async function installDictionary() {
       gloss: row[5] || []
     }));
 
-    await importJMDict(entries);
+    allEntries.push(...entries);
   }
+
+  // 🔥 ONE transaction instead of 213
+  await importJMDict(allEntries);
 
   console.log("dictionary install complete");
 }

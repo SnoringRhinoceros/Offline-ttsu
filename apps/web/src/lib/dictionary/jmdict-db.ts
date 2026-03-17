@@ -28,11 +28,12 @@ export const dbPromise = openDB(DB_NAME, 1, {
 
 export async function importJMDict(entries: JMDictEntry[]) {
   const db = await dbPromise;
-  const tx = db.transaction(STORE, "readwrite");
+  const tx = db.transaction("entries", "readwrite");
+
   const store = tx.store;
 
   for (const entry of entries) {
-    store.put(entry); // no await (much faster)
+    store.put(entry);
   }
 
   await tx.done;

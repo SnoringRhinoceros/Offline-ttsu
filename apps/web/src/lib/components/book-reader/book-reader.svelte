@@ -638,11 +638,9 @@ function selectWord(x: number, y: number) {
                     <div class="text-sm">{g}</div>
 
                   {:else if g.type === "structured-content"}
-
                     <div class="text-sm structured-dict">
                       {@html renderStructuredContent(g.content)}
                     </div>
-
                   {/if}
 
                 {/each}
