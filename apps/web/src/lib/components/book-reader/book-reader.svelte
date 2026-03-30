@@ -57,43 +57,7 @@ onMount(() => {
   let isPopupVisible = false;
   let side: 'left' | 'right' = 'right';
 
-function getWordRangeFromPoint(x: number, y: number): Range | null {
-  let range: Range | null = null;
-
-  if (document.caretRangeFromPoint) {
-    range = document.caretRangeFromPoint(x, y);
-  } else if ((document as any).caretPositionFromPoint) {
-    const pos = (document as any).caretPositionFromPoint(x, y);
-    if (pos) {
-      range = document.createRange();
-      range.setStart(pos.offsetNode, pos.offset);
-      range.collapse();
-    }
-  }
-
-  if (!range) return null;
-
-  const node = range.startContainer;
-
-  if (node.nodeType !== Node.TEXT_NODE) return null;
-
-  const text = node.textContent ?? "";
-  let start = range.startOffset;
-  let end = range.startOffset;
-
-  while (start > 0 && /\p{Letter}|\p{Number}/u.test(text[start - 1])) start--;
-  while (end < text.length && /\p{Letter}|\p{Number}/u.test(text[end])) end++;
-
-  if (start === end) return null;
-
-  const wordRange = document.createRange();
-  wordRange.setStart(node, start);
-  wordRange.setEnd(node, end);
-
-  return wordRange;
-}
-
-function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect } | null {
+function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect, fullText: string, index: number } | null {
   const range = document.caretRangeFromPoint
     ? document.caretRangeFromPoint(x, y)
     : (document as any).caretPositionFromPoint
@@ -110,6 +74,7 @@ function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect } |
   if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
 
   const text = range.startContainer.textContent ?? "";
+  const index = range.startOffset;
   let start = range.startOffset;
   let end = range.startOffset;
 
@@ -128,7 +93,9 @@ function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect } |
 
   return {
     text: text.slice(start, end),
-    rect
+    rect,
+    fullText: text,
+    index
   };
 }
 
@@ -144,14 +111,17 @@ function handleTap(event: PointerEvent) {
     return;
   }
 
-  const { text, rect } = result;
+  const { text, rect, fullText, index } = result;
 
+  // What user tapped (for display)
   selectedText = text;
 
-  dictionaryLoading = true;
-  dictionaryResults = [];
+  // What we actually search (longer context)
+  const lookupText = fullText
+    ? fullText.slice(index, index + 15) // adjust length if needed
+    : text;
 
-  lookupWord(text).then(results => {
+  lookupWord(lookupText).then(results => {
     dictionaryResults = results;
     dictionaryLoading = false;
   });
@@ -186,58 +156,6 @@ function handleTap(event: PointerEvent) {
   isPopupVisible = true;
 }
 
-function selectWord(x: number, y: number) {
-  const range = getWordRangeFromPoint(x, y);
-  if (!range) {
-    isPopupVisible = false;
-    return;
-  }
-
-  const selection = window.getSelection();
-  if (!selection) return;
-
-  selection.removeAllRanges();
-  selection.addRange(range);
-
-  const text = range.toString().trim();
-
-  if (!text || text.length > 50) {
-    isPopupVisible = false;
-    return;
-  }
-
-  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
-
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  selectedText = text;
-
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  side = centerX > viewportWidth / 2 ? 'left' : 'right';
-
-  const horizontalOffset = 14;
-
-  popupX = side === 'right'
-    ? rect.right + horizontalOffset
-    : rect.left - horizontalOffset;
-
-  popupY = centerY;
-
-  const popupHeight = 260;
-
-  if (popupY + popupHeight > viewportHeight - 16) {
-    popupY = viewportHeight - popupHeight - 16;
-  }
-
-  if (popupY < 16) {
-    popupY = 16;
-  }
-
-  isPopupVisible = true;
-}
   export let htmlContent: string;
 
   export let width: number;

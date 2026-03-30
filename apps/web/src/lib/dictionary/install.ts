@@ -55,7 +55,6 @@ export async function installDictionary() {
     allEntries.push(...entries);
   }
 
-  // 🔥 ONE transaction instead of 213
   await importJMDict(allEntries);
 
   console.log("dictionary install complete");
