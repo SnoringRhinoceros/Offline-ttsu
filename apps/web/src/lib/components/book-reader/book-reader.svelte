@@ -57,45 +57,130 @@ onMount(() => {
   let isPopupVisible = false;
   let side: 'left' | 'right' = 'right';
 
-function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect, fullText: string, index: number } | null {
-  const range = document.caretRangeFromPoint
-    ? document.caretRangeFromPoint(x, y)
-    : (document as any).caretPositionFromPoint
-    ? (() => {
-        const pos = (document as any).caretPositionFromPoint(x, y);
-        if (!pos) return null;
-        const r = document.createRange();
-        r.setStart(pos.offsetNode, pos.offset);
-        r.collapse();
-        return r;
-      })()
-    : null;
+function getAdjacentText(node: Node, direction: "left" | "right"): string {
+  let current: Node | null = node;
 
+  while (current) {
+    current =
+      direction === "left"
+        ? current.previousSibling
+        : current.nextSibling;
+
+    if (!current) break;
+
+    if (current.nodeType === Node.TEXT_NODE) {
+      return current.textContent ?? "";
+    }
+
+    // Dive into elements
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const walker = document.createTreeWalker(
+        current,
+        NodeFilter.SHOW_TEXT
+      );
+
+      let textNode =
+        direction === "left"
+          ? walker.lastChild()
+          : walker.firstChild();
+
+      if (textNode) return textNode.textContent ?? "";
+    }
+  }
+
+  return "";
+}
+
+function getCaretRange(x: number, y: number): Range | null {
+  // This version doesn't seem to work on firefox so I'm just going to use chrome for now
+  // // Modern API (Firefox, some Chromium builds)
+  // if (document.caretPositionFromPoint) {
+  //   const pos = document.caretPositionFromPoint(x, y);
+  //   if (!pos) return null;
+
+  //   const range = document.createRange();
+  //   range.setStart(pos.offsetNode, pos.offset);
+  //   range.collapse();
+  //   return range;
+  // }
+
+  // ✅ Legacy API (still works in Chrome)
+  if ((document as any).caretRangeFromPoint) {
+    return (document as any).caretRangeFromPoint(x, y);
+  }
+
+  return null;
+}
+
+function getForwardText(node: Node, offset: number, maxLength = 15): string {
+  let text = "";
+  let current: Node | null = node;
+  let currentOffset = offset;
+
+  function isFurigana(n: Node): boolean {
+    return (
+      n.nodeType === Node.ELEMENT_NODE &&
+      (n as HTMLElement).tagName === "RT"
+    );
+  }
+
+  function getNextNode(n: Node | null): Node | null {
+    if (!n) return null;
+
+    // ❌ DO NOT go inside <rt>
+    if (!isFurigana(n) && n.firstChild) {
+      return n.firstChild;
+    }
+
+    // Traverse siblings / climb up
+    while (n) {
+      if (n.nextSibling) return n.nextSibling;
+      n = n.parentNode!;
+    }
+
+    return null;
+  }
+
+  while (current && text.length < maxLength) {
+    // ❌ Skip <rt> entirely
+    if (isFurigana(current)) {
+      current = getNextNode(current);
+      continue;
+    }
+
+    // ✅ Only collect visible text
+    if (current.nodeType === Node.TEXT_NODE) {
+      const content = current.textContent ?? "";
+      text += content.slice(currentOffset);
+      currentOffset = 0;
+    }
+
+    current = getNextNode(current);
+  }
+
+  return text.slice(0, maxLength);
+}
+function getWordAtPoint(
+  x: number,
+  y: number
+): { text: string; rect: DOMRect; fullText: string; index: number } | null {
+  const range = getCaretRange(x, y);
   if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
 
-  const text = range.startContainer.textContent ?? "";
+  const node = range.startContainer;
   const index = range.startOffset;
-  let start = range.startOffset;
-  let end = range.startOffset;
 
-  while (start > 0 && /\p{Letter}|\p{Number}/u.test(text[start - 1])) start--;
-  while (end < text.length && /\p{Letter}|\p{Number}/u.test(text[end])) end++;
-
-  if (start === end) return null;
-
-  const wordRange = document.createRange();
-  wordRange.setStart(range.startContainer, start);
-  wordRange.setEnd(range.startContainer, end);
+  const text = getForwardText(node, index, 15);
 
   const rect =
-    wordRange.getClientRects()[0] ??
-    wordRange.getBoundingClientRect();
+    range.getClientRects()[0] ??
+    range.getBoundingClientRect();
 
   return {
-    text: text.slice(start, end),
+    text,
     rect,
     fullText: text,
-    index
+    index: 0
   };
 }
 
