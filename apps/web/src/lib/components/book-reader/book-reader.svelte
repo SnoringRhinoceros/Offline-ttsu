@@ -57,130 +57,104 @@ onMount(() => {
   let isPopupVisible = false;
   let side: 'left' | 'right' = 'right';
 
-function getAdjacentText(node: Node, direction: "left" | "right"): string {
-  let current: Node | null = node;
-
-  while (current) {
-    current =
-      direction === "left"
-        ? current.previousSibling
-        : current.nextSibling;
-
-    if (!current) break;
-
-    if (current.nodeType === Node.TEXT_NODE) {
-      return current.textContent ?? "";
-    }
-
-    // Dive into elements
-    if (current.nodeType === Node.ELEMENT_NODE) {
-      const walker = document.createTreeWalker(
-        current,
-        NodeFilter.SHOW_TEXT
-      );
-
-      let textNode =
-        direction === "left"
-          ? walker.lastChild()
-          : walker.firstChild();
-
-      if (textNode) return textNode.textContent ?? "";
-    }
-  }
-
-  return "";
-}
-
-function getCaretRange(x: number, y: number): Range | null {
-  // This version doesn't seem to work on firefox so I'm just going to use chrome for now
-  // // Modern API (Firefox, some Chromium builds)
-  // if (document.caretPositionFromPoint) {
-  //   const pos = document.caretPositionFromPoint(x, y);
-  //   if (!pos) return null;
-
-  //   const range = document.createRange();
-  //   range.setStart(pos.offsetNode, pos.offset);
-  //   range.collapse();
-  //   return range;
-  // }
-
-  // ✅ Legacy API (still works in Chrome)
-  if ((document as any).caretRangeFromPoint) {
-    return (document as any).caretRangeFromPoint(x, y);
-  }
-
-  return null;
-}
-
-function getForwardText(node: Node, offset: number, maxLength = 15): string {
-  let text = "";
-  let current: Node | null = node;
-  let currentOffset = offset;
-
-  function isFurigana(n: Node): boolean {
-    return (
-      n.nodeType === Node.ELEMENT_NODE &&
-      (n as HTMLElement).tagName === "RT"
-    );
-  }
-
-  function getNextNode(n: Node | null): Node | null {
-    if (!n) return null;
-
-    // ❌ DO NOT go inside <rt>
-    if (!isFurigana(n) && n.firstChild) {
-      return n.firstChild;
-    }
-
-    // Traverse siblings / climb up
-    while (n) {
-      if (n.nextSibling) return n.nextSibling;
-      n = n.parentNode!;
-    }
-
-    return null;
-  }
-
-  while (current && text.length < maxLength) {
-    // ❌ Skip <rt> entirely
-    if (isFurigana(current)) {
-      current = getNextNode(current);
-      continue;
-    }
-
-    // ✅ Only collect visible text
-    if (current.nodeType === Node.TEXT_NODE) {
-      const content = current.textContent ?? "";
-      text += content.slice(currentOffset);
-      currentOffset = 0;
-    }
-
-    current = getNextNode(current);
-  }
-
-  return text.slice(0, maxLength);
-}
 function getWordAtPoint(
   x: number,
   y: number
-): { text: string; rect: DOMRect; fullText: string; index: number } | null {
-  const range = getCaretRange(x, y);
-  if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
+): { text: string; rect: DOMRect } | null {
+  let range: Range | null = null;
 
-  const node = range.startContainer;
-  const index = range.startOffset;
+  if ("caretPositionFromPoint" in document) {
+    const pos = (document as any).caretPositionFromPoint(x, y);
+    if (!pos) return null;
 
-  const text = getForwardText(node, index, 15);
+    range = document.createRange();
+    range.setStart(pos.offsetNode, pos.offset);
+    range.collapse();
+  }
+
+  if (!range) return null;
+
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        if (!node.parentElement) return NodeFilter.FILTER_REJECT;
+
+        // ❌ ignore furigana
+        if (node.parentElement.closest("rt")) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        // ❌ ignore empty/whitespace-only nodes
+        if (!node.textContent?.trim()) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+
+  walker.currentNode = range.startContainer;
+
+  let node: Node | null = walker.currentNode;
+  let offset = range.startOffset;
+
+  let collected = "";
+
+  // punctuation regex (Japanese + English)
+  const isPunctuation = (char: string) =>
+    /[。、！？・「」『』（）()\[\]{}.,!?;:\s]/.test(char);
+
+  // Step 1: skip leading whitespace
+  while (node) {
+    const text = node.textContent || "";
+
+    while (offset < text.length && /\s/.test(text[offset])) {
+      offset++;
+    }
+
+    if (offset < text.length) break;
+
+    node = walker.nextNode();
+    offset = 0;
+  }
+
+  // Step 2: collect up to 15 chars until punctuation
+  while (node && collected.length < 15) {
+    const text = node.textContent || "";
+
+    while (offset < text.length && collected.length < 15) {
+      const char = text[offset];
+
+      // 🚨 STOP at punctuation
+      if (isPunctuation(char)) {
+        break;
+      }
+
+      collected += char;
+      offset++;
+    }
+
+    // stop entirely if punctuation hit
+    if (offset < text.length && isPunctuation(text[offset])) {
+      break;
+    }
+
+    node = walker.nextNode();
+    offset = 0;
+  }
+
+  if (!collected) return null;
 
   const rect =
-    range.getClientRects()[0] ??
-    range.getBoundingClientRect();
+    range.getBoundingClientRect() ||
+    (range.startContainer.parentElement?.getBoundingClientRect() as DOMRect);
 
   return {
-    text,
-    rect,
-    fullText: text,
-    index: 0
+    text: collected,
+    rect
   };
 }
 
