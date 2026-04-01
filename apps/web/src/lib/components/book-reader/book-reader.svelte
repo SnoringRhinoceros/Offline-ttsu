@@ -32,11 +32,12 @@
   import { onDestroy } from 'svelte';
 
   import { onMount } from 'svelte';
-  import { lookupWord } from '$lib/dictionary/lookup';
+  import { lookupWord, lookupLongestMatches } from '$lib/dictionary/lookup';
   import { renderStructuredContent } from '$lib/dictionary/dictionary-renderer';
 
   let dictionaryResults: any[] = [];
 let dictionaryLoading = false;
+const MAX_LENGTH = 10;
 
 onMount(() => {
   const sub = containerEl$.subscribe(el => {
@@ -177,10 +178,10 @@ function handleTap(event: PointerEvent) {
 
   // What we actually search (longer context)
   const lookupText = fullText
-    ? fullText.slice(index, index + 15) // adjust length if needed
+    ? fullText.slice(index, index + MAX_LENGTH) // adjust length if needed
     : text;
 
-  lookupWord(lookupText).then(results => {
+  lookupLongestMatches(lookupText).then(results => {
     dictionaryResults = results;
     dictionaryLoading = false;
   });

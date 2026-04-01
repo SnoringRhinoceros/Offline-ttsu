@@ -1,5 +1,36 @@
 import { dbPromise } from "./jmdict-db";
 
+export async function lookupLongestMatches(text: string) {
+  const results: any[] = [];
+  const seen = new Set<string>();
+
+  // Try longest → shortest
+  for (let len = text.length; len > 0; len--) {
+    const sub = text.slice(0, len);
+
+    const matches = await lookupWord(sub);
+
+    if (matches.length > 0) {
+      for (const m of matches) {
+        const key = `${m.kanji?.[0]}-${m.kana?.[0]}`;
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push({
+            ...m,
+            matchLength: len
+          });
+        }
+      }
+    }
+  }
+
+  // Sort: longest matches first (VERY important)
+  results.sort((a, b) => b.matchLength - a.matchLength);
+
+  return results;
+}
+
 export async function lookupWord(word: string) {
   const db = await dbPromise;
 
