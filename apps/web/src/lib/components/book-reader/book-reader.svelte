@@ -558,7 +558,7 @@ function handleTap(event: PointerEvent) {
     style:top="{popupY}px"
   >
     <div 
-      class="absolute p-4 rounded-xl shadow-2xl border bg-white text-black w-[280px] sm:w-[350px] pointer-events-auto"
+      class="absolute p-4 rounded-xl shadow-2xl border bg-white text-black w-[280px] sm:w-[350px] h-[280px] pointer-events-auto"
       class:anchor-left={side === 'left'}
       class:anchor-right={side === 'right'}
       style:writing-mode="horizontal-tb"
