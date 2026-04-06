@@ -565,15 +565,9 @@ function handleTap(event: PointerEvent) {
       style:max-height="80vh"
       style:overflow-y="auto"
     >
-      <div class="flex justify-between items-start mb-2">
-        <span class="text-[10px] font-bold uppercase tracking-wider opacity-40">Dictionary Lookup</span>
-        <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button>
-      </div>
+      <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
 
-      <div class="text-2xl font-bold mb-2">{selectedText}</div>
-      
-      <div class="space-y-3 pt-3 border-t border-gray-100">
-
+      <div>
         {#if dictionaryLoading}
           <div class="animate-pulse space-y-2">
             <div class="h-2 bg-gray-200 rounded w-3/4"></div>
