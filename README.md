@@ -7,4 +7,4 @@ An fork of ッツ Ebook Reader https://github.com/ttu-ttu/ebook-reader with a do
 **Note**: The reader was created for japanese (language learners) - while books in other languages may work to a specific degree other functionalites (e. g. character counter etc.) may have unsupported / unexpected results
 
 ## Self host
-If you want to self host this project, you need to install JMDict for yomitan and unzip its contents into the static folder  
+If you want to self host this project, you need to install [Jitendex](https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip) for yomitan and unzip its contents into the static folder
