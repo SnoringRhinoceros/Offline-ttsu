@@ -48,5 +48,8 @@
       "svelte-preprocess",
       "unrs-resolver"
     ]
-  }
+  },
+  "workspaces": [
+    "apps/*"
+  ]
 }

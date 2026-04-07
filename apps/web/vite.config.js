@@ -10,12 +10,24 @@ if (nodeVersion < 17) {
 /** @type {import('vite').UserConfig} */
 const config = {
   plugins: [sveltekit()],
+
   ssr: {
     // https://github.com/FortAwesome/Font-Awesome/issues/18677
     noExternal: ['@fortawesome/*', '@popperjs/*']
   },
+
   experimental: {
     prebundleSvelteLibraries: true
+  },
+
+  server: {
+    proxy: {
+      '/api/dictionary-proxy': {
+        target: 'http://localhost:3000', // Bun proxy
+        changeOrigin: true,
+        rewrite: () => '/', // maps to Bun server root
+      }
+    }
   }
 };
 

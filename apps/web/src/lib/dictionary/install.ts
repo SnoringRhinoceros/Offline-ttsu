@@ -20,36 +20,45 @@ export async function isDictionaryInstalled() {
   return count > 0;
 }
 
-export async function installDictionary() {
-  console.log("installing dictionary");
+import JSZip from "jszip";
 
-  loadDictionaryStyles("/dictionaries/jmdict/styles.css");
+const PROXY_URL = "/api/dictionary-proxy";
+
+export async function installDictionary() {
+  console.log("Installing dictionary...");
+
+  // Fetch from proxy (works in BOTH dev + prod)
+  const res = await fetch(PROXY_URL);
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch dictionary ZIP");
+  }
+
+  const blob = await res.blob();
+  const zip = await JSZip.loadAsync(blob);
 
   const allEntries: any[] = [];
 
   for (let i = 1; i <= 213; i++) {
-    const file = `/dictionaries/jmdict/term_bank_${i}.json`;
+    const fileName = `term_bank_${i}.json`;
+    const file = zip.file(fileName);
 
-    const res = await fetch(file);
-
-    if (!res.ok) {
-      console.warn("Missing dictionary file:", file);
+    if (!file) {
+      console.warn("Missing file:", fileName);
       continue;
     }
 
-    const data = await res.json();
+    const text = await file.async("string");
+    const data = JSON.parse(text);
 
     const entries = data.map((row: any) => ({
       id: crypto.randomUUID(),
-
       kanji: row[0] ? [row[0]] : [],
       kana: row[1] ? [row[1]] : [],
-
       tags: row[2] || [],
       rules: row[3] || [],
       score: row[4] || 0,
-
-      gloss: row[5] || []
+      gloss: row[5] || [],
     }));
 
     allEntries.push(...entries);
@@ -57,5 +66,5 @@ export async function installDictionary() {
 
   await importJMDict(allEntries);
 
-  console.log("dictionary install complete");
+  console.log("✅ Dictionary install complete");
 }
