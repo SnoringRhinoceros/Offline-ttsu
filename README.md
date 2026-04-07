@@ -8,3 +8,4 @@ An fork of ッツ Ebook Reader https://github.com/ttu-ttu/ebook-reader with a do
 
 ## Self host
 If you want to self host this project, you need to install [Jitendex](https://github.com/stephenmk/stephenmk.github.io/releases/latest/download/jitendex-yomitan.zip) for yomitan and unzip its contents into the static folder
+Additionally, to enable dictionary zip installing features you need to us bun run .\proxy.ts in .\apps\web
