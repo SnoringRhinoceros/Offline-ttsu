@@ -1,0 +1,8 @@
+{
+  "routes": [
+    {
+      "src": "/api/dictionary-proxy",
+      "dest": "/api/dictionary-proxy.ts"
+    }
+  ]
+}
