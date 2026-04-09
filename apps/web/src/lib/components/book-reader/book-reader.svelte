@@ -64,7 +64,10 @@ function getWordAtPoint(
 ): { text: string; rect: DOMRect } | null {
   let range: Range | null = null;
 
-  if ("caretPositionFromPoint" in document) {
+  // ✅ Use best API available (mobile-first)
+  if ("caretRangeFromPoint" in document) {
+    range = (document as any).caretRangeFromPoint(x, y);
+  } else if ("caretPositionFromPoint" in document) {
     const pos = (document as any).caretPositionFromPoint(x, y);
     if (!pos) return null;
 
@@ -74,6 +77,18 @@ function getWordAtPoint(
   }
 
   if (!range) return null;
+
+  // ✅ EXPAND range so rect is not (0,0)
+  if (range.startContainer.nodeType === Node.TEXT_NODE) {
+    const textNode = range.startContainer as Text;
+    const offset = range.startOffset;
+
+    if (offset < textNode.length) {
+      range.setEnd(textNode, offset + 1);
+    } else if (offset > 0) {
+      range.setStart(textNode, offset - 1);
+    }
+  }
 
   const walker = document.createTreeWalker(
     document.body,
@@ -104,11 +119,10 @@ function getWordAtPoint(
 
   let collected = "";
 
-  // punctuation regex (Japanese + English)
   const isPunctuation = (char: string) =>
     /[。、！？・「」『』（）()\[\]{}.,!?;:\s]/.test(char);
 
-  // Step 1: skip leading whitespace
+  // Step 1: skip whitespace
   while (node) {
     const text = node.textContent || "";
 
@@ -122,26 +136,20 @@ function getWordAtPoint(
     offset = 0;
   }
 
-  // Step 2: collect up to 15 chars until punctuation
+  // Step 2: collect word
   while (node && collected.length < 15) {
     const text = node.textContent || "";
 
     while (offset < text.length && collected.length < 15) {
       const char = text[offset];
 
-      // 🚨 STOP at punctuation
-      if (isPunctuation(char)) {
-        break;
-      }
+      if (isPunctuation(char)) break;
 
       collected += char;
       offset++;
     }
 
-    // stop entirely if punctuation hit
-    if (offset < text.length && isPunctuation(text[offset])) {
-      break;
-    }
+    if (offset < text.length && isPunctuation(text[offset])) break;
 
     node = walker.nextNode();
     offset = 0;
@@ -149,9 +157,16 @@ function getWordAtPoint(
 
   if (!collected) return null;
 
-  const rect =
-    range.getBoundingClientRect() ||
-    (range.startContainer.parentElement?.getBoundingClientRect() as DOMRect);
+  // ✅ SAFE rect (no fallback needed anymore)
+  let rect = range.getBoundingClientRect();
+
+  // ✅ Extra safety: fallback if still broken
+  if (rect.width === 0 && rect.height === 0) {
+    const el = range.startContainer.parentElement;
+    if (el) {
+      rect = el.getBoundingClientRect();
+    }
+  }
 
   return {
     text: collected,
