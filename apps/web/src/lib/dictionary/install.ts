@@ -1,14 +1,20 @@
-import { importJMDict } from "./jmdict-db";
-import { dbPromise } from "./jmdict-db";
+/**
+ * @license BSD-3-Clause
+ * Copyright (c) 2026, ッツ Reader Authors
+ * All rights reserved.
+ */
+
+import { importJMDict } from './jmdict-db';
+import { dbPromise } from './jmdict-db';
 
 export function loadDictionaryStyles(path: string) {
-  const id = `dict-style-${path.replace(/[^\w]/g, "")}`;
+  const id = `dict-style-${path.replace(/[^\w]/g, '')}`;
 
   if (document.getElementById(id)) return;
 
-  const link = document.createElement("link");
+  const link = document.createElement('link');
   link.id = id;
-  link.rel = "stylesheet";
+  link.rel = 'stylesheet';
   link.href = path;
 
   document.head.appendChild(link);
@@ -16,39 +22,36 @@ export function loadDictionaryStyles(path: string) {
 
 export async function isDictionaryInstalled() {
   const db = await dbPromise;
-  const count = await db.count("entries");
+  const count = await db.count('entries');
   return count > 0;
 }
 
-import JSZip from "jszip";
+import JSZip from 'jszip';
 
-const PROXY_URL = "/api/dictionary-proxy";
+const PROXY_URL = '/api/dictionary-proxy';
 
-export async function installDictionary() {
-  console.log("Installing dictionary...");
+export async function installDictionary(onProgress?: (p: number) => void) {
+  console.log('Installing dictionary...');
 
   // Fetch from proxy (works in BOTH dev + prod)
   const res = await fetch(PROXY_URL);
 
   if (!res.ok) {
-    throw new Error("Failed to fetch dictionary ZIP");
+    throw new Error('Failed to fetch dictionary ZIP');
   }
 
   const blob = await res.blob();
   const zip = await JSZip.loadAsync(blob);
 
-  const allEntries: any[] = [];
+  const TOTAL = 213;
 
-  for (let i = 1; i <= 213; i++) {
+  for (let i = 1; i <= TOTAL; i++) {
     const fileName = `term_bank_${i}.json`;
     const file = zip.file(fileName);
 
-    if (!file) {
-      console.warn("Missing file:", fileName);
-      continue;
-    }
+    if (!file) continue;
 
-    const text = await file.async("string");
+    const text = await file.async('string');
     const data = JSON.parse(text);
 
     const entries = data.map((row: any) => ({
@@ -58,13 +61,19 @@ export async function installDictionary() {
       tags: row[2] || [],
       rules: row[3] || [],
       score: row[4] || 0,
-      gloss: row[5] || [],
+      gloss: row[5] || []
     }));
 
-    allEntries.push(...entries);
+    // ✅ Insert immediately instead of storing all
+    await importJMDict(entries);
+
+    onProgress?.(i / TOTAL);
+
+    console.log(`Loaded file ${i}`);
+
+    // ✅ Let browser breathe (VERY IMPORTANT)
+    await new Promise((r) => setTimeout(r, 0));
   }
 
-  await importJMDict(allEntries);
-
-  console.log("✅ Dictionary install complete");
+  console.log('✅ Dictionary install complete');
 }

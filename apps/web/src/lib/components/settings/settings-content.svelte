@@ -59,34 +59,37 @@
   import { installDictionary, isDictionaryInstalled } from '$lib/dictionary/install';
 
   let dictionaryInstalled = false;
-let dictionaryInstalling = false;
+  let dictionaryInstalling = false;
+  let dictionaryProgress = 0;
 
-async function installDictionaryHandler() {
-  dictionaryInstalling = true;
+  async function installDictionaryHandler() {
+    dictionaryInstalling = true;
 
-  try {
-    await installDictionary();
-    dictionaryInstalled = true;
-  } catch (e) {
-    dialogManager.dialogs$.next([
-      {
-        component: MessageDialog,
-        props: {
-          title: 'Dictionary Install Error',
-          message: `Failed to install dictionary: ${(e as Error).message}`
+    try {
+      await installDictionary((progress) => {
+        dictionaryProgress = progress;
+      });
+      dictionaryInstalled = true;
+    } catch (e) {
+      dialogManager.dialogs$.next([
+        {
+          component: MessageDialog,
+          props: {
+            title: 'Dictionary Install Error',
+            message: `Failed to install dictionary: ${(e as Error).message}`
+          }
         }
-      }
-    ]);
+      ]);
+    }
+
+    dictionaryInstalling = false;
   }
 
-  dictionaryInstalling = false;
-}
-
-if (browser) {
-  isDictionaryInstalled().then((installed) => {
-    dictionaryInstalled = installed;
-  });
-}
+  if (browser) {
+    isDictionaryInstalled().then((installed) => {
+      dictionaryInstalled = installed;
+    });
+  }
 
   export let selectedTheme: string;
 
@@ -959,36 +962,47 @@ if (browser) {
     </SettingsItemGroup>
 
     <SettingsItemGroup
-  title="Japanese Dictionary"
-  tooltip="Install the offline JMDict dictionary used for word lookups"
->
-  <div class="flex items-center">
-
-    {#if dictionaryInstalled}
-
-      <div class="text-green-600 font-semibold">
-        Installed ✓
-      </div>
-
-    {:else}
-
-      <button
-        class="px-3 py-1 rounded-md border border-gray-400 hover:bg-gray-100 flex items-center"
-        on:click={installDictionaryHandler}
-        disabled={dictionaryInstalling}
-      >
-        {#if dictionaryInstalling}
-          <Fa icon={faSpinner} spin class="mr-2"/>
-          Installing...
+      title="Japanese Dictionary"
+      tooltip="Install the offline JMDict dictionary used for word lookups"
+    >
+      <div class="flex items-center">
+        {#if dictionaryInstalled}
+          <div class="text-green-600 font-semibold">Installed ✓</div>
         {:else}
-          Install Dictionary
+          <div class="flex flex-col w-full">
+            <button
+              class="px-3 py-1 rounded-md border border-gray-400 hover:bg-gray-100 flex items-center"
+              on:click={installDictionaryHandler}
+              disabled={dictionaryInstalling}
+            >
+              {#if dictionaryInstalling}
+                <Fa icon={faSpinner} spin class="mr-2" />
+                Installing...
+              {:else}
+                Install Dictionary
+              {/if}
+            </button>
+
+            {#if dictionaryInstalling}
+              <div class="mt-2 w-full">
+                <!-- Progress Bar -->
+                <div class="w-full h-2 bg-gray-200 rounded">
+                  <div
+                    class="h-2 bg-blue-500 rounded transition-all duration-200"
+                    style="width: {dictionaryProgress * 100}%"
+                  ></div>
+                </div>
+
+                <!-- Percentage -->
+                <div class="text-xs text-gray-600 mt-1">
+                  {Math.floor(dictionaryProgress * 100)}%
+                </div>
+              </div>
+            {/if}
+          </div>
         {/if}
-      </button>
-
-    {/if}
-
-  </div>
-</SettingsItemGroup>
+      </div></SettingsItemGroup
+    >
 
     <SettingsItemGroup title="Epub Import Fixes" tooltip={importHTMLFixModeTooltip}>
       <ButtonToggleGroup
