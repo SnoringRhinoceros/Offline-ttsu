@@ -562,6 +562,7 @@ function handleTap(event: PointerEvent) {
       on:contentChange={(ev) => contentEl$.next(ev.detail)}
       on:bookmark
       on:trackerPause
+      on:pageNavigation={() => isPopupVisible = false}
     />
   {/if}
 </div>
@@ -580,8 +581,9 @@ function handleTap(event: PointerEvent) {
       style:max-height="80vh"
       style:overflow-y="auto"
     >
-      <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
-
+    
+    <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
+     
       <div>
         {#if dictionaryLoading}
           <div class="animate-pulse space-y-2">

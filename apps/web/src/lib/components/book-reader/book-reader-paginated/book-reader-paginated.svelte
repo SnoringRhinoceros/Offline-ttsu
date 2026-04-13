@@ -118,6 +118,7 @@
     bookmark: void;
     contentChange: HTMLElement;
     trackerPause: void;
+    pageNavigation: void;
   }>();
 
   let scrollEl: HTMLElement | undefined;
@@ -396,6 +397,10 @@
 
   pageChange$.pipe(takeUntil(destroy$)).subscribe((isUser) => {
     if (!calculator) return;
+
+    if (isUser) {
+    dispatch('pageNavigation'); 
+  }
 
     if (!isResizing) {
       showCustomReadingPoint = false;
