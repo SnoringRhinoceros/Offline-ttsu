@@ -36,69 +36,75 @@
   import { renderStructuredContent } from '$lib/dictionary/dictionary-renderer';
 
   let dictionaryResults: any[] = [];
-let dictionaryLoading = false;
-const MAX_LENGTH = 10;
+  let dictionaryLoading = false;
+  const MAX_LENGTH = 10;
 
-onMount(() => {
-  let removeListeners: (() => void) | null = null;
+  let popupEl: HTMLDivElement | null = null;
 
-  const containerSub = containerEl$.subscribe(el => {
-    if (!el) return;
+  $: if (isPopupVisible && popupEl) {
+    popupEl.scrollTop = 0;
+  }
 
-    let startX = 0;
-    let startY = 0;
-    let startTime = 0;
-    let isSwiping = false;
+  onMount(() => {
+    let removeListeners: (() => void) | null = null;
 
-    const MOVE_THRESHOLD = 10; // px (tweak if needed)
-    const TIME_THRESHOLD = 300; // ms
+    const containerSub = containerEl$.subscribe((el) => {
+      if (!el) return;
 
-    const onPointerDown = (e: PointerEvent) => {
-      startX = e.clientX;
-      startY = e.clientY;
-      startTime = Date.now();
-      isSwiping = false;
+      let startX = 0;
+      let startY = 0;
+      let startTime = 0;
+      let isSwiping = false;
 
-      // Optional: hide popup immediately on gesture start
-      isPopupVisible = false;
-    };
+      const MOVE_THRESHOLD = 10; // px (tweak if needed)
+      const TIME_THRESHOLD = 300; // ms
 
-    const onPointerMove = (e: PointerEvent) => {
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
+      const onPointerDown = (e: PointerEvent) => {
+        startX = e.clientX;
+        startY = e.clientY;
+        startTime = Date.now();
+        isSwiping = false;
 
-      if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
-        isSwiping = true;
-      }
-    };
+        // Optional: hide popup immediately on gesture start
+        isPopupVisible = false;
+      };
 
-    const onPointerUp = (e: PointerEvent) => {
-      const duration = Date.now() - startTime;
+      const onPointerMove = (e: PointerEvent) => {
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
 
-      // If swipe OR long press → ignore
-      if (isSwiping || duration > TIME_THRESHOLD) {
-        return;
-      }
+        if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+          isSwiping = true;
+        }
+      };
 
-      handleTap(e); // ✅ only real taps reach here
-    };
+      const onPointerUp = (e: PointerEvent) => {
+        const duration = Date.now() - startTime;
 
-    el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointermove", onPointerMove);
-    el.addEventListener("pointerup", onPointerUp);
+        // If swipe OR long press → ignore
+        if (isSwiping || duration > TIME_THRESHOLD) {
+          return;
+        }
 
-    removeListeners = () => {
-      el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", onPointerUp);
+        handleTap(e); // ✅ only real taps reach here
+      };
+
+      el.addEventListener('pointerdown', onPointerDown);
+      el.addEventListener('pointermove', onPointerMove);
+      el.addEventListener('pointerup', onPointerUp);
+
+      removeListeners = () => {
+        el.removeEventListener('pointerdown', onPointerDown);
+        el.removeEventListener('pointermove', onPointerMove);
+        el.removeEventListener('pointerup', onPointerUp);
+      };
+    });
+
+    return () => {
+      containerSub.unsubscribe();
+      removeListeners?.();
     };
   });
-
-  return () => {
-    containerSub.unsubscribe();
-    removeListeners?.();
-  };
-});
 
   let selectedText = '';
   let popupX = 0;
@@ -106,47 +112,41 @@ onMount(() => {
   let isPopupVisible = false;
   let side: 'left' | 'right' = 'right';
 
-function getWordAtPoint(
-  x: number,
-  y: number
-): { text: string; rect: DOMRect } | null {
-  let range: Range | null = null;
+  function getWordAtPoint(x: number, y: number): { text: string; rect: DOMRect } | null {
+    let range: Range | null = null;
 
-  // ✅ Use best API available (mobile-first)
-  if ("caretRangeFromPoint" in document) {
-    range = (document as any).caretRangeFromPoint(x, y);
-  } else if ("caretPositionFromPoint" in document) {
-    const pos = (document as any).caretPositionFromPoint(x, y);
-    if (!pos) return null;
+    // ✅ Use best API available (mobile-first)
+    if ('caretRangeFromPoint' in document) {
+      range = (document as any).caretRangeFromPoint(x, y);
+    } else if ('caretPositionFromPoint' in document) {
+      const pos = (document as any).caretPositionFromPoint(x, y);
+      if (!pos) return null;
 
-    range = document.createRange();
-    range.setStart(pos.offsetNode, pos.offset);
-    range.collapse();
-  }
-
-  if (!range) return null;
-
-  // ✅ EXPAND range so rect is not (0,0)
-  if (range.startContainer.nodeType === Node.TEXT_NODE) {
-    const textNode = range.startContainer as Text;
-    const offset = range.startOffset;
-
-    if (offset < textNode.length) {
-      range.setEnd(textNode, offset + 1);
-    } else if (offset > 0) {
-      range.setStart(textNode, offset - 1);
+      range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse();
     }
-  }
 
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
+    if (!range) return null;
+
+    // ✅ EXPAND range so rect is not (0,0)
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      const textNode = range.startContainer as Text;
+      const offset = range.startOffset;
+
+      if (offset < textNode.length) {
+        range.setEnd(textNode, offset + 1);
+      } else if (offset > 0) {
+        range.setStart(textNode, offset - 1);
+      }
+    }
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (!node.parentElement) return NodeFilter.FILTER_REJECT;
 
         // ❌ ignore furigana
-        if (node.parentElement.closest("rt")) {
+        if (node.parentElement.closest('rt')) {
           return NodeFilter.FILTER_REJECT;
         }
 
@@ -157,127 +157,122 @@ function getWordAtPoint(
 
         return NodeFilter.FILTER_ACCEPT;
       }
-    }
-  );
+    });
 
-  walker.currentNode = range.startContainer;
+    walker.currentNode = range.startContainer;
 
-  let node: Node | null = walker.currentNode;
-  let offset = range.startOffset;
+    let node: Node | null = walker.currentNode;
+    let offset = range.startOffset;
 
-  let collected = "";
+    let collected = '';
 
-  const isPunctuation = (char: string) =>
-    /[。、！？・「」『』（）()\[\]{}.,!?;:\s]/.test(char);
+    const isPunctuation = (char: string) => /[。、！？・「」『』（）()\[\]{}.,!?;:\s]/.test(char);
 
-  // Step 1: skip whitespace
-  while (node) {
-    const text = node.textContent || "";
+    // Step 1: skip whitespace
+    while (node) {
+      const text = node.textContent || '';
 
-    while (offset < text.length && /\s/.test(text[offset])) {
-      offset++;
-    }
+      while (offset < text.length && /\s/.test(text[offset])) {
+        offset++;
+      }
 
-    if (offset < text.length) break;
+      if (offset < text.length) break;
 
-    node = walker.nextNode();
-    offset = 0;
-  }
-
-  // Step 2: collect word
-  while (node && collected.length < 15) {
-    const text = node.textContent || "";
-
-    while (offset < text.length && collected.length < 15) {
-      const char = text[offset];
-
-      if (isPunctuation(char)) break;
-
-      collected += char;
-      offset++;
+      node = walker.nextNode();
+      offset = 0;
     }
 
-    if (offset < text.length && isPunctuation(text[offset])) break;
+    // Step 2: collect word
+    while (node && collected.length < 15) {
+      const text = node.textContent || '';
 
-    node = walker.nextNode();
-    offset = 0;
-  }
+      while (offset < text.length && collected.length < 15) {
+        const char = text[offset];
 
-  if (!collected) return null;
+        if (isPunctuation(char)) break;
 
-  // ✅ SAFE rect (no fallback needed anymore)
-  let rect = range.getBoundingClientRect();
+        collected += char;
+        offset++;
+      }
 
-  // ✅ Extra safety: fallback if still broken
-  if (rect.width === 0 && rect.height === 0) {
-    const el = range.startContainer.parentElement;
-    if (el) {
-      rect = el.getBoundingClientRect();
+      if (offset < text.length && isPunctuation(text[offset])) break;
+
+      node = walker.nextNode();
+      offset = 0;
     }
+
+    if (!collected) return null;
+
+    // ✅ SAFE rect (no fallback needed anymore)
+    let rect = range.getBoundingClientRect();
+
+    // ✅ Extra safety: fallback if still broken
+    if (rect.width === 0 && rect.height === 0) {
+      const el = range.startContainer.parentElement;
+      if (el) {
+        rect = el.getBoundingClientRect();
+      }
+    }
+
+    return {
+      text: collected,
+      rect
+    };
   }
 
-  return {
-    text: collected,
-    rect
-  };
-}
+  function handleTap(event: PointerEvent) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
 
-function handleTap(event: PointerEvent) {
-  if (event.pointerType === "mouse" && event.button !== 0) return;
+    const { clientX, clientY } = event;
 
-  const { clientX, clientY } = event;
+    const result = getWordAtPoint(clientX, clientY);
 
-  const result = getWordAtPoint(clientX, clientY);
+    if (!result) {
+      isPopupVisible = false;
+      return;
+    }
 
-  if (!result) {
-    isPopupVisible = false;
-    return;
+    const { text, rect, fullText, index } = result;
+
+    // What user tapped (for display)
+    selectedText = text;
+
+    // What we actually search (longer context)
+    const lookupText = fullText
+      ? fullText.slice(index, index + MAX_LENGTH) // adjust length if needed
+      : text;
+
+    lookupLongestMatches(lookupText).then((results) => {
+      dictionaryResults = results;
+      dictionaryLoading = false;
+    });
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    side = centerX > viewportWidth / 2 ? 'left' : 'right';
+
+    const horizontalOffset = 14;
+
+    popupX = side === 'right' ? rect.right + horizontalOffset : rect.left - horizontalOffset;
+
+    popupY = rect.top;
+
+    const popupHeight = 260;
+
+    if (popupY + popupHeight > viewportHeight - 16) {
+      popupY = viewportHeight - popupHeight - 16;
+    }
+
+    if (popupY < 16) {
+      popupY = 16;
+    }
+
+    isPopupVisible = true;
   }
-
-  const { text, rect, fullText, index } = result;
-
-  // What user tapped (for display)
-  selectedText = text;
-
-  // What we actually search (longer context)
-  const lookupText = fullText
-    ? fullText.slice(index, index + MAX_LENGTH) // adjust length if needed
-    : text;
-
-  lookupLongestMatches(lookupText).then(results => {
-    dictionaryResults = results;
-    dictionaryLoading = false;
-  });
-
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  side = centerX > viewportWidth / 2 ? "left" : "right";
-
-  const horizontalOffset = 14;
-
-  popupX =
-    side === "right"
-      ? rect.right + horizontalOffset
-      : rect.left - horizontalOffset;
-
-  popupY = rect.top;
-
-  const popupHeight = 260;
-
-  if (popupY + popupHeight > viewportHeight - 16) {
-    popupY = viewportHeight - popupHeight - 16;
-  }
-
-  if (popupY < 16) {
-    popupY = 16;
-  }
-
-  isPopupVisible = true;
-}
 
   export let htmlContent: string;
 
@@ -610,18 +605,19 @@ function handleTap(event: PointerEvent) {
       on:contentChange={(ev) => contentEl$.next(ev.detail)}
       on:bookmark
       on:trackerPause
-      on:pageNavigation={() => isPopupVisible = false}
+      on:pageNavigation={() => (isPopupVisible = false)}
     />
   {/if}
 </div>
 
 {#if isPopupVisible}
-  <div 
+  <div
     class="fixed z-[9999] pointer-events-none transition-all duration-150"
     style:left="{popupX}px"
     style:top="{popupY}px"
   >
-    <div 
+    <div
+      bind:this={popupEl}
       class="absolute p-4 rounded-xl shadow-2xl border bg-white text-black w-[280px] sm:w-[350px] h-[280px] pointer-events-auto"
       class:anchor-left={side === 'left'}
       class:anchor-right={side === 'right'}
@@ -629,33 +625,31 @@ function handleTap(event: PointerEvent) {
       style:max-height="80vh"
       style:overflow-y="auto"
     >
-    
-    <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
-     
+      <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
+
       <div>
         {#if dictionaryLoading}
           <div class="animate-pulse space-y-2">
             <div class="h-2 bg-gray-200 rounded w-3/4"></div>
             <div class="h-2 bg-gray-200 rounded"></div>
           </div>
-
         {:else if dictionaryResults.length === 0}
-
           <div class="text-sm opacity-60">No dictionary results</div>
-
         {:else}
-
           {#each dictionaryResults as entry, i}
-            <div class="space-y-1 pb-2 {i !== dictionaryResults.length - 1 ? 'border-b border-gray-100' : ''}">
-
+            <div
+              class="space-y-1 pb-2 {i !== dictionaryResults.length - 1
+                ? 'border-b border-gray-100'
+                : ''}"
+            >
               <div class="font-semibold">
-                {entry.kanji?.length ? entry.kanji.join(" ・ ") : entry.kana?.join(" ・ ")}
+                {entry.kanji?.length ? entry.kanji.join(' ・ ') : entry.kana?.join(' ・ ')}
               </div>
 
               <div class="text-sm opacity-70">
                 {#if entry.kana?.length}
                   <div class="text-sm opacity-70">
-                    {entry.kana.join(" ・ ")}
+                    {entry.kana.join(' ・ ')}
                   </div>
                 {/if}
               </div>
@@ -670,29 +664,24 @@ function handleTap(event: PointerEvent) {
 
               <ul class="text-sm list-disc ml-4 space-y-0.5">
                 {#each entry.gloss as g}
-
-                  {#if typeof g === "string"}
+                  {#if typeof g === 'string'}
                     <div class="text-sm">{g}</div>
-
-                  {:else if g.type === "structured-content"}
+                  {:else if g.type === 'structured-content'}
                     <div class="text-sm structured-dict">
                       {@html renderStructuredContent(g.content)}
                     </div>
                   {/if}
-
                 {/each}
               </ul>
-
             </div>
-
           {/each}
-
         {/if}
-
-        </div>
+      </div>
     </div>
   </div>
 {/if}
+{$blurListener$ ?? ''}
+{$reactiveElements$ ?? ''}
 
 <style>
   /* If the popup is to the left of the word, it must translate itself 100% left */
@@ -713,9 +702,7 @@ function handleTap(event: PointerEvent) {
   /* Prevent the popup from flying off the bottom of the screen */
   div.absolute {
     /* If the word is at the bottom, this ensures the popup expands upwards */
-    bottom: auto; 
+    bottom: auto;
     top: 0;
   }
 </style>
-{$blurListener$ ?? ''}
-{$reactiveElements$ ?? ''}
