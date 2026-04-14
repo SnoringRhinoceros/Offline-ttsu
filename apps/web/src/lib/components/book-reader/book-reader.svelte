@@ -40,16 +40,64 @@ let dictionaryLoading = false;
 const MAX_LENGTH = 10;
 
 onMount(() => {
-  const sub = containerEl$.subscribe(el => {
+  let removeListeners: (() => void) | null = null;
+
+  const containerSub = containerEl$.subscribe(el => {
     if (!el) return;
 
-    const tapListener = (e: PointerEvent) => handleTap(e);
-    el.addEventListener("pointerup", tapListener);
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let isSwiping = false;
 
-    return () => el.removeEventListener("pointerup", tapListener);
+    const MOVE_THRESHOLD = 10; // px (tweak if needed)
+    const TIME_THRESHOLD = 300; // ms
+
+    const onPointerDown = (e: PointerEvent) => {
+      startX = e.clientX;
+      startY = e.clientY;
+      startTime = Date.now();
+      isSwiping = false;
+
+      // Optional: hide popup immediately on gesture start
+      isPopupVisible = false;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+
+      if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+        isSwiping = true;
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const duration = Date.now() - startTime;
+
+      // If swipe OR long press → ignore
+      if (isSwiping || duration > TIME_THRESHOLD) {
+        return;
+      }
+
+      handleTap(e); // ✅ only real taps reach here
+    };
+
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+
+    removeListeners = () => {
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+    };
   });
 
-  return () => sub.unsubscribe();
+  return () => {
+    containerSub.unsubscribe();
+    removeListeners?.();
+  };
 });
 
   let selectedText = '';
