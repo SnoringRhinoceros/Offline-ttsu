@@ -34,6 +34,7 @@
   import { onMount } from 'svelte';
   import { lookupWord, lookupLongestMatches } from '$lib/dictionary/lookup';
   import { renderStructuredContent } from '$lib/dictionary/dictionary-renderer';
+  import deinja from 'deinja';
 
   let dictionaryResults: any[] = [];
   let dictionaryLoading = false;
@@ -44,6 +45,39 @@
   $: if (isPopupVisible && popupEl) {
     popupEl.scrollTop = 0;
   }
+
+async function lookupWithDeinflection(text: string) {
+  console.log(text)
+  const seen = new Set<string>();
+
+  // deinja returns string[]
+  const baseForms = deinja.convert(text);
+
+  const candidates = [text, ...baseForms];
+
+  const allResults: any[] = [];
+
+  for (const word of candidates) {
+    if (seen.has(word)) continue;
+    seen.add(word);
+
+    const results = await lookupLongestMatches(word);
+
+    if (results && results.length > 0) {
+      allResults.push(
+        ...results.map((r: any) => ({
+          ...r,
+          match: word
+        }))
+      );
+
+      // OPTIONAL: stop early for performance
+      // return allResults;
+    }
+  }
+
+  return allResults;
+}
 
   onMount(() => {
     let removeListeners: (() => void) | null = null;
@@ -242,7 +276,9 @@
       ? fullText.slice(index, index + MAX_LENGTH) // adjust length if needed
       : text;
 
-    lookupLongestMatches(lookupText).then((results) => {
+    dictionaryLoading = true;
+
+    lookupWithDeinflection(lookupText).then((results) => {
       dictionaryResults = results;
       dictionaryLoading = false;
     });
@@ -625,7 +661,6 @@
       style:max-height="80vh"
       style:overflow-y="auto"
     >
-      <!-- <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button> -->
 
       <div>
         {#if dictionaryLoading}
@@ -636,6 +671,11 @@
         {:else if dictionaryResults.length === 0}
           <div class="text-sm opacity-60">No dictionary results</div>
         {:else}
+        <div class="relative w-full h-48">
+          <div class="absolute top-0 right-0">
+            <button on:click={() => isPopupVisible = false} class="text-gray-400 hover:text-black">✕</button>
+          </div>  
+
           {#each dictionaryResults as entry, i}
             <div
               class="space-y-1 pb-2 {i !== dictionaryResults.length - 1
@@ -675,6 +715,7 @@
               </ul>
             </div>
           {/each}
+        </div>
         {/if}
       </div>
     </div>

@@ -43,5 +43,6 @@ export async function lookupWord(word: string) {
     map.set(e.id, e);
   });
 
+
   return [...map.values()].slice(0, 10);
 }

@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "ttu-reader",
+      "dependencies": {
+        "deinja": "^0.0.3",
+      },
       "devDependencies": {
         "@commitlint/cli": "20.4.3",
         "@commitlint/config-conventional": "20.4.3",
@@ -39,6 +42,7 @@
         "@popperjs/core": "2.11.8",
         "@zip.js/zip.js": "2.4.26",
         "balanced-match": "3.0.1",
+        "deinja": "^0.0.3",
         "fake-indexeddb": "6.2.5",
         "fast-xml-parser": "5.4.2",
         "idb": "^8.0.3",
@@ -606,6 +610,8 @@
     "deepmerge": ["deepmerge@4.3.1", "", {}, "sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A=="],
 
     "define-properties": ["define-properties@1.2.0", "", { "dependencies": { "has-property-descriptors": "1.0.0", "object-keys": "1.1.1" } }, "sha512-xvqAVKGfT1+UAvPwKTVw/njhdQ8ZhXK4lI0bCIuCMrp2up9nPnaDftrLtmpTazqd1o+UY4zgzU+avtMbDP+ldA=="],
+
+    "deinja": ["deinja@0.0.3", "", { "dependencies": { "uniqlist": "^1.0.4" } }, "sha512-LQQtquCUt2MU+4AKNJ0j0WvrDCYtdoBQVO+/LP3QgkUGa9c1any+K3yumFRYGO0d851i7Tc4frFRrqvByR3gcQ=="],
 
     "detect-europe-js": ["detect-europe-js@0.1.2", "", {}, "sha512-lgdERlL3u0aUdHocoouzT10d9I89VVhk0qNRmll7mXdGfJT1/wqZ2ZLA4oJAjeACPY5fT1wsbq2AT+GkuInsow=="],
 
@@ -1278,6 +1284,8 @@
     "unbox-primitive": ["unbox-primitive@1.0.2", "", { "dependencies": { "call-bind": "1.0.2", "has-bigints": "1.0.2", "has-symbols": "1.1.0", "which-boxed-primitive": "1.0.2" } }, "sha512-61pPlCD9h51VoreyJ0BReideM3MDKMKnh6+V9L08331ipq6Q8OFXZYiqP6n/tbHx4s5I9uRhcye6BrbkizkBDw=="],
 
     "undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
+
+    "uniqlist": ["uniqlist@1.0.4", "", {}, "sha512-EaJV2KMY4jAvNxDCMVm/5R0/7aEXzw41yirsDM28EHxTABv7/G6UhPDh12XDDFgQOeQ29mUgVbOTkAE/YWmEvg=="],
 
     "unrs-resolver": ["unrs-resolver@1.7.11", "", { "dependencies": { "napi-postinstall": "0.2.4" }, "optionalDependencies": { "@unrs/resolver-binding-darwin-arm64": "1.7.11", "@unrs/resolver-binding-darwin-x64": "1.7.11", "@unrs/resolver-binding-freebsd-x64": "1.7.11", "@unrs/resolver-binding-linux-arm-gnueabihf": "1.7.11", "@unrs/resolver-binding-linux-arm-musleabihf": "1.7.11", "@unrs/resolver-binding-linux-arm64-gnu": "1.7.11", "@unrs/resolver-binding-linux-arm64-musl": "1.7.11", "@unrs/resolver-binding-linux-ppc64-gnu": "1.7.11", "@unrs/resolver-binding-linux-riscv64-gnu": "1.7.11", "@unrs/resolver-binding-linux-riscv64-musl": "1.7.11", "@unrs/resolver-binding-linux-s390x-gnu": "1.7.11", "@unrs/resolver-binding-linux-x64-gnu": "1.7.11", "@unrs/resolver-binding-linux-x64-musl": "1.7.11", "@unrs/resolver-binding-wasm32-wasi": "1.7.11", "@unrs/resolver-binding-win32-arm64-msvc": "1.7.11", "@unrs/resolver-binding-win32-ia32-msvc": "1.7.11", "@unrs/resolver-binding-win32-x64-msvc": "1.7.11" } }, "sha512-OhuAzBImFPjKNgZ2JwHMfGFUA6NSbRegd1+BPjC1Y0E6X9Y/vJ4zKeGmIMqmlYboj6cMNEwKI+xQisrg4J0HaQ=="],
 
