@@ -1,4 +1,10 @@
-import { dbPromise } from "./jmdict-db";
+/**
+ * @license BSD-3-Clause
+ * Copyright (c) 2026, ッツ Reader Authors
+ * All rights reserved.
+ */
+
+import { dbPromise } from './jmdict-db';
 
 export async function lookupLongestMatches(text: string) {
   const results: any[] = [];
@@ -34,15 +40,14 @@ export async function lookupLongestMatches(text: string) {
 export async function lookupWord(word: string) {
   const db = await dbPromise;
 
-  const kanjiMatches = await db.getAllFromIndex("entries", "kanji", word);
-  const kanaMatches = await db.getAllFromIndex("entries", "kana", word);
+  const kanjiMatches = await db.getAllFromIndex('entries', 'kanji', word);
+  const kanaMatches = await db.getAllFromIndex('entries', 'kana', word);
 
   const map = new Map();
 
-  [...kanjiMatches, ...kanaMatches].forEach(e => {
+  [...kanjiMatches, ...kanaMatches].forEach((e) => {
     map.set(e.id, e);
   });
-
 
   return [...map.values()].slice(0, 10);
 }
