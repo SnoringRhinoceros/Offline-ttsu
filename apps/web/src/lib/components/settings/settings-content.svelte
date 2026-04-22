@@ -963,7 +963,7 @@
 
     <SettingsItemGroup
       title="Japanese Dictionary"
-      tooltip="Install the offline JMDict dictionary used for word lookups"
+      tooltip="Install the offline Jitendex dictionary used for word lookups"
     >
       <div class="flex items-center">
         {#if dictionaryInstalled}
